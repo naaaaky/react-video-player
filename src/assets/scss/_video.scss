@@ -1,0 +1,47 @@
+#player {
+  width: 640px;
+  height: 360px;
+}
+
+.kap-player {
+  position: relative;
+  cursor: pointer;
+  & video {
+    width: 100%;
+    z-index: 7777;
+  }
+}
+
+.kap-status-handle-button {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+}
+
+.kap-controls-container {
+  & > .kap-progress-bar {
+    position: relative;
+    padding: 0 1em;
+    background-color: rgb(210 210 210 / 60%);
+    & > .kap-progress-seek {
+      width: 100%;
+    }
+    & .kap-seek-tooltip {
+      position: absolute;
+      bottom: 0;
+    }
+  }
+  & > .kap-controls {
+    background-color: rgb(210 210 210 / 60%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    & > .kap-controls-left {
+      display: flex;
+      align-items: center;
+    }
+  }
+}
