@@ -1,5 +1,5 @@
-import React from "react";
-import VideoPlayer from "../components/video/VideoPlayer";
+import React from 'react';
+import VideoPlayer from '../components/video/VideoPlayer';
 
 const Home = () => {
   const option = {
@@ -11,13 +11,13 @@ const Home = () => {
     poster: import.meta.env.REACT_APP_POSTER,
     src: import.meta.env.REACT_APP_CLIP,
     playsinline: true,
-    role: "application",
+    role: 'application',
   };
 
   return (
     <div>
       <div>
-        <VideoPlayer src={import.meta.env.REACT_APP_CLIP} {...option} />
+        <VideoPlayer src={import.meta.env.REACT_APP_CLIP} type={'video/mp4'} preview={import.meta.env.REACT_APP_PREVIEW} {...option} />
       </div>
     </div>
   );

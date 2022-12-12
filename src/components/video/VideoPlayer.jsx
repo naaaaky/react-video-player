@@ -1,21 +1,25 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconButton } from '@mui/material';
-import { Fullscreen, PlayCircleOutline, PauseCircleOutline, PlayArrow, Pause } from '@mui/icons-material';
+import { Fullscreen, PlayCircleOutline, PauseCircleOutline, PlayArrow, Pause, VolumeOff, VolumeUp } from '@mui/icons-material';
 
-import { CustomSlider } from './VideoStyles';
+import { VolumeControlBar } from './VideoStyles';
+import ProgressBar from './ProgressBar';
+import PlaybackRate from './PlaybackRate';
 
-const VideoPlayer = ({ id, src, type, option }) => {
-  const playerRef = useRef();
-  const videoRef = useRef();
-  const handleButtonRef = useRef();
-  const playerElem = document.getElementById('kap-player');
-  const statusButtonElem = document.getElementsByClassName('kap-status-handle-button')[0];
-  const tooltipRef = useRef();
-  const seekRef = useRef();
+const VideoPlayer = ({ id, src, preview, type, option }) => {
+  const playerRef = useRef(); // 플레이어 ref
+  const videoRef = useRef(); // 비디오태그 ref
+  const handleButtonRef = useRef(); // 컨트롤바 플레이버튼 ref
 
+  /* Control video track */
   const [isPlaying, setIsPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [speed, setSpeed] = useState(1.0);
+
+  /* Control volume track */
+  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(0);
 
   const currentStr = useMemo(() => {
     if (current) {
@@ -26,7 +30,7 @@ const VideoPlayer = ({ id, src, type, option }) => {
     }
   }, [current]);
   const durationStr = useMemo(() => {
-    if (!!duration) {
+    if (duration) {
       const result = new Date(duration * 1000).toISOString().substr(11, 8);
       return `${result.substr(3, 2)}:${result.substr(6, 2)}`;
     } else {
@@ -34,68 +38,36 @@ const VideoPlayer = ({ id, src, type, option }) => {
     }
   }, [duration]);
 
-  useEffect(() => {
-    console.log(current);
-  }, [current]);
-
   useLayoutEffect(() => {
-    if (!!videoRef.current.canPlayType) {
-      init();
+    if (!!videoRef.current) {
+      videoRef.current.volume = 0;
       document.addEventListener('keyup', keyboardShortcuts);
-      videoRef.current.addEventListener('timeupdate', e => {
-        setCurrent(Math.round(videoRef.current.currentTime));
-      });
-      seekRef.current.addEventListener('mousemove', handleSeek);
-      seekRef.current.addEventListener('input', handleSkip);
-      videoRef.current.addEventListener('click', () => {
-        handleButtonRef.animate(
-          [
-            {
-              opacity: 1,
-              transform: 'scale(1)',
-            },
-            {
-              opacity: 0,
-              transform: 'scale(1.3)',
-            },
-          ],
-          {
-            duration: 500,
-          },
-        );
-      });
+      videoRef.current.addEventListener('durationchange', init);
+      videoRef.current.addEventListener('timeupdate', onUpdateTime);
     }
     return () => {
       videoRef.current.pause();
       document.removeEventListener('keyup', keyboardShortcuts);
-      videoRef.current.removeEventListener('timeupdate', e => {
-        setCurrent(Math.round(videoRef.current.currentTime));
-      });
-      seekRef.current.removeEventListener('mousemove', handleSeek);
-      seekRef.current.removeEventListener('input', handleSkip);
-      videoRef.current.removeEventListener('click', () => {
-        handleButtonRef.animate(
-          [
-            {
-              opacity: 1,
-              transform: 'scale(1)',
-            },
-            {
-              opacity: 0,
-              transform: 'scale(1.3)',
-            },
-          ],
-          {
-            duration: 500,
-          },
-        );
-      });
+      videoRef.current.removeEventListener('durationchange', init);
+      videoRef.current.removeEventListener('timeupdate', onUpdateTime);
     };
   }, [videoRef.current]);
 
-  const init = () => {
-    const videoDuration = Math.round(videoRef.current.duration);
-    setDuration(videoDuration);
+  const init = e => setDuration(Math.round(e.target.duration));
+
+  const onUpdateTime = e => {
+    console.log(videoRef.current.PlaybackRate);
+    setCurrent(Math.round(e.target.currentTime));
+  };
+
+  const handleSeek = e => {
+    videoRef.current.currentTime = Math.round(e.target.valueAsNumber);
+    setCurrent(e.target.valueAsNumber);
+  };
+
+  const keyboardShortcuts = event => {
+    const { keyCode } = event;
+    if (keyCode === 32) handlePlay();
   };
 
   const handlePlay = () => {
@@ -108,44 +80,27 @@ const VideoPlayer = ({ id, src, type, option }) => {
     }
   };
 
-  const handleSeek = e => {
-    const skipTo = Math.round(parseInt(e.target.value, 10));
-    setCurrent(skipTo);
-    const rect = videoRef.current.getBoundingClientRect();
-    tooltipRef.current.style.left = `${e.pageX - rect.left}px`;
+  const handleVolume = e => {
+    videoRef.current.muted = e.target.valueAsNumber > 0 ? false : true;
+    setIsMuted(e.target.valueAsNumber > 0 ? false : true);
+    setVolume(e.target.valueAsNumber);
   };
 
-  const handleSkip = e => {
-    const skipTo = Math.round(parseInt(e.target.value, 10));
-    videoRef.current.currentTime = skipTo;
-    setCurrent(skipTo);
-  };
-
-  const keyboardShortcuts = event => {
-    const { keyCode } = event;
-    if (keyCode === 32) handlePlay();
+  const handleSpeed = value => {
+    setSpeed(value);
+    videoRef.current.playbackRate = value;
   };
 
   const onToggleFullscreen = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else if (document.webkitFullscreenElement) {
-      // Need this to support Safari
       document.webkitExitFullscreen();
     } else if (playerRef.current.webkitRequestFullscreen) {
-      // Need this to support Safari
       playerRef.current.webkitRequestFullscreen();
     } else {
       playerRef.current.requestFullscreen();
     }
-  };
-
-  const formatTime = (timeInSeconds = 0) => {
-    const result = new Date(timeInSeconds * 1000).toISOString().substr(11, 8);
-    return {
-      minutes: result.substr(3, 2),
-      seconds: result.substr(6, 2),
-    };
   };
 
   return (
@@ -156,17 +111,21 @@ const VideoPlayer = ({ id, src, type, option }) => {
           id={id}
           controls={false}
           tabIndex={-1}
+          type={type}
           src={src}
           {...option}
+          onCanPlay={e => {
+            e.target.defaultPlaybackRate = speed;
+          }}
           onMouseEnter={e => {
-            statusButtonElem.style.display = 'block';
+            handleButtonRef.current.style.display = 'block';
           }}
           onMouseLeave={e => {
-            statusButtonElem.style.display = 'none';
+            handleButtonRef.current.style.display = 'none';
           }}
         />
-        <div className={'kap-status-handle-button'}>
-          <IconButton ref={handleButtonRef}>
+        <div ref={handleButtonRef} className={'kap-status-handle-button'}>
+          <IconButton>
             {isPlaying ? (
               <PauseCircleOutline style={{ color: '#fff', fontSize: '80px' }} />
             ) : (
@@ -176,24 +135,7 @@ const VideoPlayer = ({ id, src, type, option }) => {
         </div>
       </div>
       <div className={'kap-controls-container'}>
-        <div className={'kap-progress-bar'}>
-          <input
-            className='kap-progress-seek'
-            id='progress-seek'
-            value={current.toString()}
-            min={'0'}
-            max={duration.toString()}
-            onChange={e => setCurrent(e.target.value)}
-            type='range'
-            step='1'
-            ref={seekRef}
-          />
-          <div className='kap-seek-tooltip' id='seek-tooltip' ref={tooltipRef}>
-            <p>{currentStr}</p>
-          </div>
-          {/* <div className={'kap-progress-seek-tooltip'}>{current}</div>
-          <CustomSlider value={current} min={0} max={duration} step={1} onChange={(_, value) => setCurrent(value)} /> */}
-        </div>
+        <ProgressBar current={current} duration={duration} handleSeek={handleSeek} currentText={currentStr} preview={preview} />
         <div className={'kap-controls'}>
           <div className={'kap-controls-left'}>
             <IconButton id='play' onClick={handlePlay}>
@@ -206,6 +148,20 @@ const VideoPlayer = ({ id, src, type, option }) => {
             </div>
           </div>
           <div className={'kap-controls-right'}>
+            <VolumeControlBar volume={volume} isMuted={isMuted}>
+              <IconButton
+                onClick={() => {
+                  videoRef.current.muted = !isMuted;
+                  videoRef.current.volume = isMuted ? 1 : 0;
+                  setVolume(isMuted ? 1 : 0);
+                  setIsMuted(prev => !prev);
+                }}
+              >
+                {!isMuted && volume > 0 ? <VolumeUp /> : <VolumeOff />}
+              </IconButton>
+              <input type='range' id='volume-seek' value={volume} min={0} max={1} step={0.05} onChange={handleVolume} />
+            </VolumeControlBar>
+            <PlaybackRate speed={speed} handleSpeed={handleSpeed} />
             <IconButton onClick={onToggleFullscreen}>
               <Fullscreen />
             </IconButton>
